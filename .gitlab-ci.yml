@@ -1,0 +1,49 @@
+# This file is a template, and might need editing before it works on your project.
+variables:
+  RASPI_HOST: 10.50.91.11
+  NFS_SHARE: /nfs/cluster # type without the trailing /
+
+stages:
+  - build
+  - test
+  - deploy
+
+cross-compile-master:
+  tags: 
+    - shell
+  # Official docker image.
+  stage: build
+  script:
+    - whoami
+    - pwd
+    - ls -alh
+    - ssh cluster@10.50.91.11 mkdir -p /home/cluster/tidumarco/
+    - scp -r ./* cluster@$RASPI_HOST:~/tidumarco/
+    - ssh cluster@10.50.91.11 ls -alh /home/cluster/tidumarco/
+    - ssh cluster@$RASPI_HOST "cd /home/cluster/tidumarco/ && docker build -t tidumarco/weatherstation ."
+  only:
+    - master
+
+raspi-deploy-test:
+  stage: test
+  tags:
+    - shell
+  script:
+    - ssh cluster@$RASPI_HOST docker rm -f tidumarco 2>/dev/null || true
+    - ssh cluster@$RASPI_HOST docker run --name tidumarco  --device /dev/mem:/dev/mem --privileged tidumarco/weatherstation:latest npm test
+
+raspi-deploy-prod:
+  stage: deploy
+  when: manual
+  tags:
+    - shell
+  script: 
+    - whoami
+    - hostname
+    - ls -alh
+    - pwd
+    - ssh cluster@$RASPI_HOST docker rm -f tidumarco 2>/dev/null || true
+    - ssh cluster@$RASPI_HOST docker run -p 8888:8888 --name tidumarco \
+     -m 100M \
+     tidumarco/weatherstation:latest
+    - ssh cluster@$RASPI_HOST docker rm -f tidumarco 2>/dev/null || true
