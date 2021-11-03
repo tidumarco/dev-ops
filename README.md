@@ -1,1 +1,1 @@
-Just a readme.md file.
+Final assignment for DevOps course in Kajaani University of Applied Sciences
